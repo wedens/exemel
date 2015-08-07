@@ -176,26 +176,28 @@ case class Cursor(result: (String, Zipper) \/ Zipper) {
 // }
 
 object syntax {
-  // implicit class DecodeCursorOps[F[_]: Traverse](dr: DecodeResult[F[Cursor]]) {
-  //   def to[A: FromXML]: DecodeResult[F[A]] =
-  //     dr >>= (_.traverse(_.to[A]))
-
-  //   def \(name: String): DecodeResult[F[Cursor]] = ???
-  //   def \?(name: String): DecodeResult[Option[Cursor]] = ???
-  //   def \*(name: String): DecodeResult[List[Cursor]] = ???
-  //   def @@(name: String): DecodeResult[F[Cursor]] = ???
-  //   def @?(name: String): DecodeResult[Option[Cursor]] = ???
-  //   def ##(n: Int): DecodeResult[F[Cursor]] = ???
+  // implicit class DecodeCursorOps(dr: DecodeResult[Cursor]) {
+  //   def to[A: FromXML]: DecodeResult[A] =
+  //     dr >>= (_.to[A])
   // }
 
-  // implicit class DecodeCursorOps(dr: DecodeResult[Option[Cursor]]) {
-  //   def to[A: FromXML]: DecodeResult[A] = ???
-  //   def \(name: String): DecodeResult[Cursor] = ???
-  //   def \?(name: String): DecodeResult[Option[Cursor]] = ???
-  //   def \*(name: String): DecodeResult[List[Cursor]] = ???
-  //   def @@(name: String): DecodeResult[Cursor] = ???
-  //   def @?(name: String): DecodeResult[Option[Cursor]] = ???
-  //   def ##(n: Int): DecodeResult[Cursor] = ???
+  // implicit class DecodeCursorListOps(dr: DecodeResult[List[Cursor]]) {
+  //   def to[A: FromXML]: DecodeResult[List[A]] =
+  //     dr >>= (_.traverse(_.to[A]))
+
+  //   def \*(name: String): DecodeResult[List[Cursor]] =
+  //     dr >>= (_.traverseM(_ \* name))
+
+  //   def @@(name: String): DecodeResult[List[Cursor]] =
+  //     dr >>= (_.traverse(_ @@ name))
+  // }
+
+  // implicit class DecodeCursorOptionOps(dr: DecodeResult[Option[Cursor]]) {
+  //   def to[A: FromXML]: DecodeResult[Option[A]] =
+  //     dr >>= (_.traverse(_.to[A]))
+
+  //   def \*(name: String): DecodeResult[Option[List[Cursor]]] =
+  //     dr >>= (_.traverse(_ \* name))
   // }
 }
 
@@ -219,88 +221,14 @@ object FromXml {
 
   implicit def fromXMLTr: FromXML[Tr] = ???
   // implicit val fromXMLTd: FromXML[Td] = apply(c =>
-  //   for {
-  //     a <- (c \ "b" @@ "attr").to[String]
-  //     b <- (c \ "b" ## 3 @@ "attr").to[String]
-  //     c0 <- (c \* "a" \* "d").to[String]
-  //     d <- (c \? "d" @? "attr2").to[String]
-  //     e <- (c \* "d" @@ "attr3").to[Tr]
-  //   } yield Td(a, b, c0, d, e)
-  // )
-  // implicit val fromXMLTd: FromXML[Td] = apply(c =>
-  //   for {
-  //     a <- (c \ "b" @@ "attr").to[String]
-  //     // b <- (c \ "b").to[String]
-  //     b <- (c \ "b" ## 3 @@ "attr").to[String]
-  //     // c0 <- (c \* "a").to[String]
-  //     c0 <- (c \* "a" \* "d").to[String]
-  //     d <- (c \? "d" @? "attr2").to[String]
-  //     e <- (c \* "d" @@ "attr3").to[Tr]
-  //   } yield Td(a, b, c0, d, e)
-  // )
-  implicit val fromXMLTd: FromXML[Td] = apply(c =>
-    (
-      ((c \ "b") >>= (_ @@ ("attr")) >>= (_.to[String])) |@|
-      ((c \ "b") >>= (_ ## 2) >>= (_.to[String])) |@|
-      ((c \* "a") >>= each(_.to[String])) |@|
-      ((c \? "x") >>= each(_.to[String])) |@|
-      ((c \* "a") >>= each(_ @@ "attr2" >>= (_.to[Tr])))
-    )(Td.apply _))
+  //   (
+  //     ((c \ "b") >>= (_ @@ ("attr"))).to[String] |@|
+  //     ((c \ "b") >>= (_ ## 2)).to[String] |@|
+  //     (c \* "a").to[String] |@|
+  //     (c \? "x").to[String] |@|
+  //     (c \* "a" \* "d" @@ "attr3").to[Tr]
+  //   )(Td.apply _))
 
   def each[F[_]: Traverse, A](f: Cursor => DecodeResult[A])(c: F[Cursor]): DecodeResult[F[A]] =
     c.traverse(f)
-
-  // implicit val fromXMLString: FromXML[String] = new FromXML[String] {
-  //   def fromXML(cursor: Cursor): DecodeResult[String] = ???
-  // }
-
-  // implicit val fromXMLTsts: FromXML[Tst] = new FromXML[Tst] {
-  //   def fromXML(cursor: Cursor): DecodeResult[Tst] =
-  //     (cursor --\* "a").traverse(_.as[String]).map(Tst)
-  // }
 }
-
-// sealed trait CursorFocus
-// case class SingleFocus(z: Zipper) extends CursorFocus
-// case class MultiFocus(zs: List[Zipper]) extends CursorFocus
-
-// case class Cursor(result: (String, Zipper) \/ CursorFocus) {
-//   def as[A](implicit ev: FromXML[A]): DecodeResult[A] = ev.fromXML(this)
-//   def element(n: String): Cursor = ???
-//   def elementOpt(n: String): Cursor = ???
-//   def elements(n: String): Cursor = ???
-//   def children: Cursor = ???
-//   def attribute(n: String): Cursor = ???
-//   def attributeOpt(n: String): Cursor = ???
-//   def content: DecodeResult[String] = ???
-//   def selected: DecodeResult[List[Cursor]] = ???
-// }
-
-// trait FromXML[A] {
-//   def fromXML(cursor: Cursor): DecodeResult[A]
-// }
-
-// object FromXml {
-//   def apply[A](f: Cursor => DecodeResult[A]): FromXML[A] = new FromXML[A] {
-//     def fromXML(cursor: Cursor): DecodeResult[A] = f(cursor)
-//   }
-
-//   implicit def fromXMLString: FromXML[String] = apply(_.content)
-//   implicit def OptionFromXML[A](implicit ev: FromXML[A]): FromXML[Option[A]] = ???
-//   implicit def ListFromXML[A](implicit ev: FromXML[A]): FromXML[List[A]] =
-//     apply(_.selected >>= (_.traverse(_.as[A])))
-
-//   case class Tr(v: String)
-//   case class Td(a: String, b: String, c: List[String], d: Option[String], e: List[Tr])
-
-//   implicit val TrFromXML: FromXML[Tr] = apply(_.as[String].map(Tr))
-//   implicit val TdFromXML: FromXML[Td] = apply(c =>
-//     for {
-//       a <- c.element("b").attribute("attr").as[String]
-//       b <- c.element("b").as[String]
-//       c0 <- c.elements("a").as[List[String]]
-//       d <- c.elementOpt("d").attributeOpt("attr2").as[Option[String]]
-//       e <- c.elements("d").attribute("attr3").as[List[Tr]]
-//     } yield Td(a, b, c0, d, e)
-//   )
-// }
