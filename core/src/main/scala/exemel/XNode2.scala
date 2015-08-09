@@ -26,9 +26,15 @@ trait DecodeResultInstances {
   }
 }
 
-case class Zipper()
+case class Zipper() {
+  def attribute(name: String): Option[Zipper] = ???
+  def firstElementByName(name: String): Option[Zipper] = ???
+  def allElementsByName(name: String): List[Zipper] = ???
+  def nthChild(n: Int): Option[Zipper] = ???
+  def textContent: Option[String] = ???
+}
 
-case class Cursor(z: Zipper) {
+case class Cursor(z: Zipper) extends AnyVal {
   def to[A](implicit ev: FromXML[A]): DecodeResult[A] = ???
   def \(name: String): DecodeResult[Cursor] = ???
   def \?(name: String): DecodeResult[Option[Cursor]] = ???
@@ -40,4 +46,12 @@ case class Cursor(z: Zipper) {
 
 trait FromXML[A] {
   def fromXML(cursor: Cursor): DecodeResult[A]
+}
+
+object FromXML {
+  def apply[A](f: Cursor => DecodeResult[A]): FromXML[A] = new FromXML[A] {
+    def fromXML(cursor: Cursor): DecodeResult[A] = f(cursor)
+  }
+
+  implicit val cursorFromXML: FromXML[Cursor] = apply(c => DecodeResult.ok(c))
 }
