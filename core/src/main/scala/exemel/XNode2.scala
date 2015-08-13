@@ -26,7 +26,7 @@ object DecodeResult extends DecodeResultInstances {
 }
 
 trait DecodeResultInstances {
-  implicit def DecodeResultMonad: Monad[DecodeResult] = new Monad[DecodeResult] {
+  implicit val DecodeResultMonad: Monad[DecodeResult] = new Monad[DecodeResult] {
     def point[A](a: => A) = DecodeResult.ok(a)
     def bind[A, B](a: DecodeResult[A])(f: A => DecodeResult[B]) = a flatMap f
     override def map[A, B](a: DecodeResult[A])(f: A => B) = a map f
@@ -231,4 +231,69 @@ object WithSyntax {
       (c \ "contacts").to[Contacts] |@|
       (c \ "address").to[Address]
     )(Person.apply _))
+}
+
+
+sealed trait Node
+object Node {
+  type Name = String
+
+  case class Element(
+    name: Name,
+    attributes: Map[Name, String],
+    children: List[Node]
+  ) extends Node
+
+  case class PCData(text: String) extends Node
+}
+
+//   case class CData(text: String) extends Node
+// }
+
+// trait ToXML[A] {
+//   def toXML(a: A): Node
+// }
+
+
+object x {
+  import Node._
+
+  def pt(pt: PhoneType): String = pt match {
+    case Fax => "Fax"
+    case Mobile => "Mobile"
+    case Home => "Home"
+  }
+
+  def phone(name: String, phone: Phone): Element =
+    Element(name,
+      Map("type" -> pt(phone.phoneType)),
+      PCData(phone.phone) :: Nil
+    )
+
+  def contacts(name: String, c: Contacts): Element =
+    Element(name,
+      Map.empty,
+      Element("phones", Map.empty, c.phones.map(phone("phone", _))) :: Nil
+    )
+
+  def address(name: String, a: Address): Element =
+    Element(name,
+      Map.empty,
+      (Element("street", Map.empty, PCData(a.street) :: Nil).some ::
+      Element("building",
+        a.apartment.map(ap => ("apartment", ap.toString)).toList.toMap,
+        PCData(a.building.toString) :: Nil
+      ).some ::
+        a.zip.map(z => Element("zip", Map.empty, PCData(z) :: Nil)) ::
+      Nil).flatten
+    )
+
+  def person(name: String, p: Person): Element =
+    Element(name,
+      Map("id" -> p.id.toString),
+      Element("first_name", Map.empty, PCData(p.firstName) :: Nil) ::
+      Element("last_name", Map.empty, PCData(p.lastName) :: Nil) ::
+      Element("contacts", Map.empty, contacts("contacts", p.contacts) :: Nil) ::
+      Element("address", Map.empty, address("address", p.address) :: Nil) :: Nil
+    )
 }
